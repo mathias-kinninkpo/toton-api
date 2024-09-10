@@ -12,3 +12,4 @@ transformers==4.43.4
 qdrant_client
 pandas
 sentence_transformers
+fastembed
