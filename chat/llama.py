@@ -4,6 +4,10 @@ from langchain.llms.base import LLM
 import time
 from pydantic import Extra
 from langchain.callbacks.manager import CallbackManagerForLLMRun
+import os
+from dotenv import load_dotenv
+load_dotenv()
+HF_KEY = os.getenv("HF_KEY")
 
 
 class LlamaLLM(LLM):
@@ -33,7 +37,7 @@ class LlamaLLM(LLM):
 
         headers = {
             "Content-Type": "application/json",
-            'Authorization': f'Bearer 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'  # Assurez-vous que le token est correct
+            'Authorization': f'Bearer {HF_KEY}'  # Assurez-vous que le token est correct
         }
 
         # Boucle pour gérer les tentatives de nouvelle requête en cas de surcharge du serveur

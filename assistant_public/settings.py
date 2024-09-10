@@ -20,7 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ge&qtr*z-osvo6m%lixx*k^=#c57b&!v^68fn!t(ws5p&q$pye'
+import os
+from dotenv import load_dotenv
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -30,9 +33,9 @@ import os
 # Récupérer le port à partir de la variable d'environnement
 PORT = int(os.getenv('PORT', 8000))  # Valeur par défaut : 8000
 
-ALLOWED_HOSTS = ['*']  # Assurez-vous d'ajuster cette partie selon les recommandations de sécurité
-
-
+ALLOWED_HOSTS = ['*'] 
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_HEADERS = ["access-control-allow-origin"]
 
 # Application definition
 

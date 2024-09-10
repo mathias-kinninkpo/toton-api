@@ -3,6 +3,7 @@ from .models import Conversation
 from .models import Message
 
 
+
 def persist_conversation(conversation_id, messages):
     """ Fonction pour persister l'historique des conversations dans la base de données """
     conversation = Conversation.objects.get(id=conversation_id)
@@ -45,6 +46,9 @@ from transformers import (
 from langchain_community.llms import Ollama
 from langchain.docstore.document import Document
 from .llama import LlamaLLM
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
 cached_llm = LlamaLLM()
@@ -161,7 +165,7 @@ def create_rag_chain(retriever, memory=None):
     #model_id = "meta-llama/Meta-Llama-3-8B-Instruct" #context length of 262k
     # While waiting access to Llama model, you can use the falcon model to run the code.
     model_id = "beomi/gemma-ko-2b"
-
+    HF_KEY  = os.getenv("HF_KEY")
     # # Load the default tokenizer for the selected model
     # tokenizer = AutoTokenizer.from_pretrained(model_id)
     # tokenizer.pad_token_id = tokenizer.eos_token_id
