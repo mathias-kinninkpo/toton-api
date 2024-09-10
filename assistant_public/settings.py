@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-ge&qtr*z-osvo6m%lixx*k^=#c57b&!v^68fn!t(ws5p&q$pye
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['toton-api-test.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -82,6 +82,7 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 
 # Password validation
