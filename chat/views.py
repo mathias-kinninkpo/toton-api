@@ -115,6 +115,7 @@ class RagSearchView(APIView):
 
     # Extract the generated response
     response_text = result['result']
+    sources = result['source_documents']
 
     # Persist the new user query and bot response in the database
     Message.objects.create(
@@ -131,6 +132,7 @@ class RagSearchView(APIView):
     # Return the generated response and updated conversation history from the database
     return Response({
         "answer": response_text,
+        "sources": sources,
         "chat_history": [
             {"sender": message.sender, "content": message.content} for message in conversation.messages.all().order_by('created_at')
         ]  # Return the chat history from the database

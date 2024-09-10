@@ -2,6 +2,7 @@ from huggingface_hub import InferenceClient
 from langchain.llms.base import LLM
 from typing import Any, List, Optional
 from langchain.callbacks.manager import CallbackManagerForLLMRun
+import os
 
 
 class LlamaLLM(LLM):
@@ -24,7 +25,7 @@ class LlamaLLM(LLM):
         # Préparation des messages pour la requête
         messages = [{"role": "user", "content": prompt}]
 
-        client = InferenceClient(model='meta-llama/Meta-Llama-3-8B-Instruct', token="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")
+        client = InferenceClient(model='meta-llama/Meta-Llama-3-8B-Instruct', token=os.getenv("HF_TOKEN"))
         
         # Effectuer la requête à l'API en utilisant le client Inference
         response_content = ""

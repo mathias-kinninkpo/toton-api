@@ -28,6 +28,7 @@ from langchain.vectorstores import Qdrant
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from langchain.embeddings import FastEmbedEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain_qdrant import QdrantVectorStore
@@ -53,6 +54,13 @@ client = QdrantClient(":memory:")
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=50)
 sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
 encoder = FastEmbedEmbeddings(embedding_model=sentence_transformer_model)
+inference_api_key = os.getenv("HF_TOKEN")
+
+embeddings = HuggingFaceInferenceAPIEmbeddings(
+    api_key=inference_api_key,
+    model_name="BAAI/bge-m3"
+)
+
 
 def split_text(text):
     return text_splitter.split_text(text)
@@ -75,7 +83,7 @@ def create_documents(df):
 csv_path = os.path.join(BASE_DIR, "dataset_after_scrapping.csv")
 
 
-def persist_vectors_in_qdrant(client, collection_name="public_service", encoder=encoder):
+def persist_vectors_in_qdrant(client, collection_name="public_service_embedded", encoder=encoder):
 
     
     
@@ -88,8 +96,8 @@ def persist_vectors_in_qdrant(client, collection_name="public_service", encoder=
         print(f"Collection '{collection_name}' already exists. Loading existing vectors...")
         vector_store = QdrantVectorStore(
             client=client,
-            collection_name="public_service",
-            embedding=encoder,    
+            collection_name="public_service_embedded",
+            embedding=embeddings,    
         )
         return vector_store
 
@@ -99,13 +107,13 @@ def persist_vectors_in_qdrant(client, collection_name="public_service", encoder=
     client.create_collection(
         collection_name=collection_name,
         vectors_config=models.VectorParams(
-            size=embedding_size,
+            size=1024,
             distance=models.Distance.COSINE
         )
     )
       
     # Initialiser le vector store avec Langchain et Qdrant
-    vector_store = Qdrant(client, collection_name=collection_name, embeddings=encoder)
+    vector_store = Qdrant(client, collection_name=collection_name, embeddings=embeddings)
 
     df = pd.read_csv(csv_path)
 
@@ -120,54 +128,50 @@ def persist_vectors_in_qdrant(client, collection_name="public_service", encoder=
     ## Ajouter tous les documents en une seule opération
     #vector_store.add_texts(texts=texts, metadatas=metadatas)
     
-    points = []
-    point_id = 1
+    texts = []
+    metadatas = []
+
     for _, row in df.iterrows():
         for chunk in row['context_chunks']:
-            vector = encoder.embed_query(chunk)  # Encode each chunk individually
-            payload = {'links': row['links'], 'categories': row['categories'], 'context':row['context']}
-            points.append(
-                models.PointStruct(
-                    id=point_id,  # Assign unique ID for each point
-                    vector=vector,
-                    payload=payload
-                )
-            )
-            point_id += 1  # Increment the point bge-base-en-v1.5-ggufID for each point
-    # Upload the points to the collection
-    client.upload_points(
-        collection_name="public_service",
-        points=points,
-    )
-    
+           # Collect the text chunks and metadata
+        
+            texts.append(chunk)  # Add the chunked text to the texts list
+            
+            # Prepare the metadata for each chunk
+            metadatas.append({
+                'links': row['links'], 
+                'categories': row['categories'], 
+            })
+    vector_store.add_texts(texts=texts, metadatas=metadatas)
     return vector_store
 
 
 from langchain.chains import RetrievalQA
 from .llama import LlamaLLM
 
-# Définir le prompt template pour structurer la requête
 prompt_template = PromptTemplate.from_template(
     """ 
     <s>[INST] 
-    Tu es un assistant virtuel spécialisé dans les services publics. Ton objectif est de fournir des réponses claires, concises et exactes aux questions des utilisateurs en te basant sur les informations disponibles.
+    Tu es un assistant conversationnel virtuel spécialisé dans les services publics pour le Bénin en occurence. Ton objectif est de fournir des réponses claires, concises et exactes aux questions des utilisateurs en te basant sur les informations disponibles.
     Si aucune information pertinente n'est trouvée dans le contexte, indique que tu ne peux pas répondre à la question avec les données actuelles
 
     Voici ce que tu dois faire :
     1. Lis attentivement les informations fournies ci-dessous.
     2. Réponds de manière directe et précise à la question posée en te basant uniquement sur le contexte fourni.
     3. Si plusieurs informations pertinentes sont disponibles, synthétise-les de manière à fournir la réponse la plus complète et utile possible.
-    RAPEL : Si aucune information pertinente n'est trouvée dans le contexte, indique que tu ne peux pas répondre à la question avec les données actuelles.
-
+    4. Si les informations du contexte sont non coherentes et admettent des erreurs d'hortographes, il faut bien organiser ta réponse de sorte à founir des reponse claire, corretes et concises 
+    RAPEL : Si aucune information pertinente n'est trouvée dans le contexte, indique que tu ne peux pas répondre à la question dans la courtoisie!! Si ce n'est pas une question ni une demande, essai de repondre aussi avec courtoisie
+    Par exemple si l'on te remercie, tu reponds normalement bien. N'oublie pas de canalyser la discution sur ton objecetif
+    N'oublie pas surtout que tu est un chatbot en conversation avec un humain
 
     
     [/INST]</s>
     
-
+    [INST]
     {question}
     Contexte: {context}
     Réponse:
-
+    [/INST]
     
     """
 )
@@ -217,12 +221,14 @@ def create_rag_chain(retriever, memory=None, client=client, encoder=encoder, col
             personalized_context += f"Category: {category}\n"
             personalized_context += "---------------------------------\n"
         return personalized_context
+    
+    
 
     cached_llm = LlamaLLM()
     chain = RetrievalQA.from_chain_type(
         llm=cached_llm,
         retriever=retriever,
-        return_source_documents=False,
+        return_source_documents=True,
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt_template},
         #memory = memory

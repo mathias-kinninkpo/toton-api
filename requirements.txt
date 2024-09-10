@@ -9,4 +9,4 @@ pandas==2.2.2
 sentence_transformers==3.0.1
 fastembed==0.3.6
 django-cors-headers
-dotenv
+python-dotenv
