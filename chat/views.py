@@ -64,7 +64,6 @@ db_path  = os.path.join(BASE_DIR, "vector_db")
 
 client = QdrantClient(path=db_path)
 
-# Statefully manage chat history using a dictionary store
 store = {}
 
 def get_session_history(session_id: str):
@@ -79,34 +78,30 @@ class RagSearchView(APIView):
     query = request.data.get('query')
     session_id = request.data.get('session_id')
 
-    # Check if the session_id is in store, if not create a new conversation in the database
+    
     if session_id not in store:
-        # Create a new conversation only if it doesn't exist in the database
+        
         conversation, created = Conversation.objects.get_or_create(
             id=session_id,
             defaults={'name': f"Conversation starting with: {query}"}
         )
-        # Add the conversation to store for stateful memory management
+        
         store[session_id] = ChatMessageHistory()
 
-    # Retrieve the persisted conversation if it exists
     else:
-        # Load conversation history from the database
+        
         conversation = Conversation.objects.get(id=session_id)
         messages = conversation.messages.all().order_by('created_at')
-        # Add existing messages to ChatMessageHistory
+        
         for message in messages:
             sender = "user" if message.sender == "user" else "bot"
             store[session_id].add_message(message)
 
-    # Persist vectors and set up the retriever
     vectordb = persist_vectors_in_qdrant(client)
     retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-    # Create the RAG chain
     chain = create_rag_chain(retriever)
 
-    # Use RunnableWithMessageHistory to include the conversation history in the chain
     chain_with_history = RunnableWithMessageHistory(
         chain,
         get_session_history,
