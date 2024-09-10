@@ -11,4 +11,4 @@ torch==2.4.0
 transformers==4.43.4
 qdrant_client
 pandas
-
+sentence_transformers
