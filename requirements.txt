@@ -13,3 +13,5 @@ qdrant_client
 pandas
 sentence_transformers
 fastembed
+django-cors-headers
+dotenv

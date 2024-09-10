@@ -7,7 +7,7 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 import os
 from dotenv import load_dotenv
 load_dotenv()
-HF_KEY = os.getenv("HF_KEY")
+HF_KEY = os.getenv("HF_TOKEN")
 
 
 class LlamaLLM(LLM):
