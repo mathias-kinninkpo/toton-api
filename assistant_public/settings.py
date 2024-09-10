@@ -38,6 +38,15 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 #CORS_ALLOW_HEADERS = ["access-control-allow-origin"]
 
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "x-csrftoken",
+    "accept",
+    "origin",
+    "user-agent",
+]
+
 # Application definition
 
 INSTALLED_APPS = [
