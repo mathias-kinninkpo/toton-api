@@ -25,7 +25,13 @@ SECRET_KEY = 'django-insecure-ge&qtr*z-osvo6m%lixx*k^=#c57b&!v^68fn!t(ws5p&q$pye
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['toton-api-test.onrender.com', 'localhost', '127.0.0.1']
+import os
+
+# Récupérer le port à partir de la variable d'environnement
+PORT = int(os.getenv('PORT', 8000))  # Valeur par défaut : 8000
+
+ALLOWED_HOSTS = ['*']  # Assurez-vous d'ajuster cette partie selon les recommandations de sécurité
+
 
 
 # Application definition
