@@ -3,7 +3,6 @@ from .models import Conversation
 from .models import Message
 
 
-
 def persist_conversation(conversation_id, messages):
     """ Fonction pour persister l'historique des conversations dans la base de données """
     conversation = Conversation.objects.get(id=conversation_id)
@@ -40,47 +39,48 @@ from transformers import (
     pipeline,
     AutoModelForCausalLM,
     AutoTokenizer,
+    #     # pad_token_id=tokenizer.eos_token_id,
     BitsAndBytesConfig,
     AutoConfig,
 )
 from langchain_community.llms import Ollama
 from langchain.docstore.document import Document
 from .llama import LlamaLLM
-from dotenv import load_dotenv
-
-load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
-cached_llm = LlamaLLM()
 
+client = QdrantClient(":memory:")
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=50)
+sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
+encoder = FastEmbedEmbeddings(embedding_model=sentence_transformer_model)
 
+def split_text(text):
+    return text_splitter.split_text(text)
 def create_documents(df):
-    documents = []
-    for _, row in df.iterrows():
-        chunks = text_splitter.split_text(row['context'])
-        for chunk in chunks:
-            documents.append({
-                "text": chunk,
-                "metadata": {
-                    "link": row['links'],
-                    "category": row['categories']
-                }
-            })
-    return documents
+    # documents = []
+    # for _, row in df.iterrows():
+    #     chunks = text_splitter.split_text(row['context'])
+    #     for chunk in chunks:
+    #         documents.append({
+    #             "text": chunk,
+    #             "metadata": {
+    #                 "link": row['links'],
+    #                 "category": row['categories']
+    #             }
+    #         })
+    df['context_chunks'] = df['context'].apply(lambda x: split_text(x))
+    return df
 
 
 csv_path = os.path.join(BASE_DIR, "dataset_after_scrapping.csv")
 
 
-def persist_vectors_in_qdrant(client, collection_name="public_service_embed"):
+def persist_vectors_in_qdrant(client, collection_name="public_service", encoder=encoder):
 
     
-   
-    sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
-    encoder = FastEmbedEmbeddings(embedding_model=sentence_transformer_model)
-
-    embedding_size = sentence_transformer_model.get_sentence_embedding_dimension()
+    
+    embedding_size = encoder.embedding_model.get_sentence_embedding_dimension()
+    #embedding_size = sentence_transformer_model.get_sentence_embedding_dimension()
 
     collections = client.get_collections()
     if any(collection.name == collection_name for collection in collections.collections):
@@ -88,14 +88,13 @@ def persist_vectors_in_qdrant(client, collection_name="public_service_embed"):
         print(f"Collection '{collection_name}' already exists. Loading existing vectors...")
         vector_store = QdrantVectorStore(
             client=client,
-            collection_name="public_service_embed",
+            collection_name="public_service",
             embedding=encoder,    
         )
         return vector_store
 
-     # Si la collection n'existe pas, la créer et persister les vecteurs
+    # Si la collection n'existe pas, la créer et persister les vecteurs
     print(f"Creating collection '{collection_name}' and persisting vectors...")
-
     # Créer la collection dans Qdrant
     client.create_collection(
         collection_name=collection_name,
@@ -104,29 +103,43 @@ def persist_vectors_in_qdrant(client, collection_name="public_service_embed"):
             distance=models.Distance.COSINE
         )
     )
-
       
     # Initialiser le vector store avec Langchain et Qdrant
     vector_store = Qdrant(client, collection_name=collection_name, embeddings=encoder)
 
     df = pd.read_csv(csv_path)
 
-    documents = create_documents(df)
-
+    df = create_documents(df)
     # Extraire les textes et les métadonnées en une seule étape
-    texts = [doc['text'] for doc in documents]
-    metadatas = [doc['metadata'] for doc in documents]
-
-    # Initialiser le vector store avec Langchain et Qdrant
-    vector_store = Qdrant(client, collection_name=collection_name, embeddings=encoder)
-
-    # Extraire les textes et les métadonnées en une seule étape
-    texts = [doc['text'] for doc in documents]
-    metadatas = [doc['metadata'] for doc in documents]
-
-    # Ajouter tous les documents en une seule opération
-    vector_store.add_texts(texts=texts, metadatas=metadatas)
-
+    #texts = [doc['text'] for doc in documents]
+    #metadatas = [doc['metadata'] for doc in documents]
+    ## Extraire les textes et les métadonnées en une seule étape
+    #texts = [doc['text'] for doc in documents]
+    #metadatas = [doc['metadata'] for doc in documents]
+    
+    ## Ajouter tous les documents en une seule opération
+    #vector_store.add_texts(texts=texts, metadatas=metadatas)
+    
+    points = []
+    point_id = 1
+    for _, row in df.iterrows():
+        for chunk in row['context_chunks']:
+            vector = encoder.embed_query(chunk)  # Encode each chunk individually
+            payload = {'links': row['links'], 'categories': row['categories'], 'context':row['context']}
+            points.append(
+                models.PointStruct(
+                    id=point_id,  # Assign unique ID for each point
+                    vector=vector,
+                    payload=payload
+                )
+            )
+            point_id += 1  # Increment the point bge-base-en-v1.5-ggufID for each point
+    # Upload the points to the collection
+    client.upload_points(
+        collection_name="public_service",
+        points=points,
+    )
+    
     return vector_store
 
 
@@ -160,12 +173,12 @@ prompt_template = PromptTemplate.from_template(
 )
 
 
-def create_rag_chain(retriever, memory=None):
+def create_rag_chain(retriever, memory=None, client=client, encoder=encoder, collection_name="public_service_embed"):
     # Set the model id to load the model from HuggingFace
     #model_id = "meta-llama/Meta-Llama-3-8B-Instruct" #context length of 262k
     # While waiting access to Llama model, you can use the falcon model to run the code.
     model_id = "beomi/gemma-ko-2b"
-    HF_KEY  = os.getenv("HF_KEY")
+
     # # Load the default tokenizer for the selected model
     # tokenizer = AutoTokenizer.from_pretrained(model_id)
     # tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -188,7 +201,24 @@ def create_rag_chain(retriever, memory=None):
     #     # pad_token_id=tokenizer.eos_token_id,
     #     token="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"
     # )
-    #model_pipeline = HuggingFacePipeline(pipeline=hf_pipeline)
+    def format_context(retrieved_docs):
+        """Customize how the context is presented by manipulating the retrieved documents."""
+        personalized_context = ""
+        for i, doc in enumerate(retrieved_docs):
+            # Extract the relevant fields from the payload
+            content = doc.get('payload', {}).get('content', 'No content available')
+            link = doc.get('payload', {}).get('link', 'No link available')
+            category = doc.get('payload', {}).get('category', 'No category available')
+            
+            # Format the context with link and category
+            personalized_context += f"Document {i+1}:\n"
+            personalized_context += f"Content: {content}\n"
+            personalized_context += f"Link: {link}\n"
+            personalized_context += f"Category: {category}\n"
+            personalized_context += "---------------------------------\n"
+        return personalized_context
+
+    cached_llm = LlamaLLM()
     chain = RetrievalQA.from_chain_type(
         llm=cached_llm,
         retriever=retriever,
@@ -196,6 +226,7 @@ def create_rag_chain(retriever, memory=None):
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt_template},
         #memory = memory
+
     )
     return chain
 
@@ -232,9 +263,9 @@ class CustomQdrantRetriever(BaseRetriever):
 
     def get_relevant_documents(self, query):
         # Utiliser les fonctions de similarité
-        results = retriever(query, self.encoder, self.client, self.collection_name)
+        results = retriever(self, query)
         # Retourner les documents de façon compatible avec Langchain
-        return [Document(page_content=result['context'], metadata=result) for result in results]
+        return [Document(page_content=result['context'], metadata=result['links', 'categories']) for result in results]
 
 # Créer une instance de ton retriever personnalisé
 #retriever = CustomQdrantRetriever(client, encoder, collection_name="public_service_assitant")

@@ -114,7 +114,7 @@ class RagSearchView(APIView):
     result = chain_with_history.invoke({"query": query}, config=config)
 
     # Extract the generated response
-    response_text = result['result'].split("Réponse:")[1]
+    response_text = result['result']
 
     # Persist the new user query and bot response in the database
     Message.objects.create(

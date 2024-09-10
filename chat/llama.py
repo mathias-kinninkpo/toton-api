@@ -1,21 +1,11 @@
-import requests
-from typing import Any, List, Optional
+from huggingface_hub import InferenceClient
 from langchain.llms.base import LLM
-import time
-from pydantic import Extra
+from typing import Any, List, Optional
 from langchain.callbacks.manager import CallbackManagerForLLMRun
-import os
-from dotenv import load_dotenv
-load_dotenv()
-HF_KEY = os.getenv("HF_TOKEN")
 
 
 class LlamaLLM(LLM):
-    llm_url = 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct'
-    max_retries = 5  # Maximum de tentatives en cas d'erreur 429
-
-    class Config:
-        extra = Extra.forbid
+    
 
     @property
     def _llm_type(self) -> str:
@@ -31,43 +21,28 @@ class LlamaLLM(LLM):
         if stop is not None:
             raise ValueError("stop kwargs are not permitted.")
 
-        payload = {
-            "inputs": prompt,
-        }
+        # Préparation des messages pour la requête
+        messages = [{"role": "user", "content": prompt}]
 
-        headers = {
-            "Content-Type": "application/json",
-            'Authorization': f'Bearer {HF_KEY}'  # Assurez-vous que le token est correct
-        }
+        client = InferenceClient(model='meta-llama/Meta-Llama-3-8B-Instruct', token="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")
+        
+        # Effectuer la requête à l'API en utilisant le client Inference
+        response_content = ""
+        try:
+            for message in client.chat_completion(
+                messages=messages,
+                max_tokens=500,
+                stream=True
+            ):
+                delta_content = message.choices[0].delta.get("content", "")
+                response_content += delta_content
 
-        # Boucle pour gérer les tentatives de nouvelle requête en cas de surcharge du serveur
-        for attempt in range(self.max_retries):
-            response = requests.post(self.llm_url, json=payload, headers=headers, verify=False)
+        except Exception as e:
+            print(f"Error during Llama API call: {e}")
+            raise
 
-            if response.status_code == 429:  # Trop de requêtes
-                print(f"Too Many Requests. Retrying attempt {attempt + 1}/{self.max_retries}...")
-                time.sleep(2 ** attempt)  # Exponentiel backoff pour éviter la surcharge
-                continue
-
-            try:
-                response.raise_for_status()  # Lever une exception si la requête échoue
-            except requests.exceptions.HTTPError as e:
-                print(f"Request failed: {e}")
-                print(f"Response content: {response.content}")  # Afficher le contenu de la réponse pour mieux comprendre l'erreur
-                raise
-
-            try:
-                # Assurez-vous que la réponse a bien la structure attendue
-                print(response.json())  
-
-                return response.json()[0]['generated_text']
-            except (KeyError, IndexError) as e:
-                print(f"Error parsing the response: {response.json()}")
-                raise
-
-        raise Exception("Failed to get a response from the LLaMA API after several attempts.")
+        return response_content
 
     @property
     def _identifying_params(self) -> dict:
-        """Get the identifying parameters."""
-        return {"llmUrl": self.llm_url}
+        return {"llmUrl": "meta-llama/Meta-Llama-3-8B-Instruct"}
