@@ -10,3 +10,4 @@ sentence_transformers==3.0.1
 fastembed==0.3.6
 django-cors-headers
 python-dotenv
+dj_database_url
