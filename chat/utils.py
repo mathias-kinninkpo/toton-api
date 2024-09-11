@@ -26,7 +26,6 @@ def load_conversation(conversation_id):
 
 from langchain_community.vectorstores import Qdrant
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from qdrant_client import QdrantClient
@@ -52,8 +51,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 client = QdrantClient(":memory:")
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=50)
-sentence_transformer_model = SentenceTransformer("all-MiniLM-L6-v2")
-encoder = FastEmbedEmbeddings(embedding_model=sentence_transformer_model)
+
 inference_api_key = os.getenv("HF_TOKEN")
 
 embeddings = HuggingFaceInferenceAPIEmbeddings(
@@ -83,7 +81,7 @@ def create_documents(df):
 csv_path = os.path.join(BASE_DIR, "dataset_after_scrapping.csv")
 
 
-def persist_vectors_in_qdrant(client, collection_name="public_service_embedded", encoder=encoder):
+def persist_vectors_in_qdrant(client, collection_name="public_service_embedded"):
 
     
     
@@ -177,7 +175,7 @@ prompt_template = PromptTemplate.from_template(
 )
 
 
-def create_rag_chain(retriever, memory=None, client=client, encoder=encoder, collection_name="public_service_embed"):
+def create_rag_chain(retriever, memory=None, client=client, collection_name="public_service_embed"):
     # Set the model id to load the model from HuggingFace
     #model_id = "meta-llama/Meta-Llama-3-8B-Instruct" #context length of 262k
     # While waiting access to Llama model, you can use the falcon model to run the code.
