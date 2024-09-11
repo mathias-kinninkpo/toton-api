@@ -3,11 +3,9 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
-from langchain.memory import ConversationBufferMemory
+#from langchain.memory import ConversationBufferMemory
 
-from .utils import (
-    load_conversation, 
-    persist_conversation, 
+from .utils import ( 
     persist_vectors_in_qdrant,
     create_rag_chain
 )
@@ -48,8 +46,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 
-from sentence_transformers import SentenceTransformer
-from langchain.embeddings import FastEmbedEmbeddings
+# from sentence_transformers import SentenceTransformer
+# from langchain.embeddings import FastEmbedEmbeddings
 from qdrant_client import QdrantClient
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory

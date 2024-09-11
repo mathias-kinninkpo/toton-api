@@ -1,4 +1,4 @@
-from langchain.memory import ConversationBufferMemory
+# from langchain.memory import ConversationBufferMemory
 from .models import Conversation
 from .models import Message
 
@@ -35,16 +35,16 @@ from langchain_qdrant import QdrantVectorStore
 from langchain.prompts import PromptTemplate
 import pandas as pd
 import os
-from langchain.llms.huggingface_pipeline import HuggingFacePipeline
-from transformers import (
-    pipeline,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    #     # pad_token_id=tokenizer.eos_token_id,
-    BitsAndBytesConfig,
-    AutoConfig,
-)
-from langchain_community.llms import Ollama
+#from langchain.llms.huggingface_pipeline import HuggingFacePipeline
+# from transformers import (
+#     pipeline,
+#     AutoModelForCausalLM,
+#     AutoTokenizer,
+#     #     # pad_token_id=tokenizer.eos_token_id,
+#     BitsAndBytesConfig,
+#     AutoConfig,
+# )
+#from langchain_community.llms import Ollama
 from langchain.docstore.document import Document
 from .llama import LlamaLLM
 
@@ -87,7 +87,7 @@ def persist_vectors_in_qdrant(client, collection_name="public_service_embedded",
 
     
     
-    embedding_size = encoder.embedding_model.get_sentence_embedding_dimension()
+    #embedding_size = encoder.embedding_model.get_sentence_embedding_dimension()
     #embedding_size = sentence_transformer_model.get_sentence_embedding_dimension()
 
     collections = client.get_collections()
