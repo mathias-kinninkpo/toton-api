@@ -157,13 +157,9 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Define the directory for collected static files
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
-
-# Optional: Include additional directories to look for static files
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles_build", "static") 
+STATIC_URL = "/staticfiles/" 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 
 ALLOWED_HOSTS = ['*']

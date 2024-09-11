@@ -51,8 +51,6 @@ from rest_framework.response import Response
 from qdrant_client import QdrantClient
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-import pandas as pd
-from langchain.vectorstores import Qdrant
 import os
 
 

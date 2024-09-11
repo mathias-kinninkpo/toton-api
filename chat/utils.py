@@ -24,10 +24,10 @@ def load_conversation(conversation_id):
 
 
 
-from langchain.vectorstores import Qdrant
+from langchain_community.vectorstores import Qdrant
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
-from langchain.embeddings import FastEmbedEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
